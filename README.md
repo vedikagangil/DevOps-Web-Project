@@ -42,7 +42,8 @@ This project implements a **fully automated CI/CD pipeline** using AWS services 
 ✅ **Scalability** – Ready for multi-instance deployments (adjust `deployment-config` in CodeDeploy).  
 
 ## 📸 **Screenshots & Demo**  
-- [CI/CD Pipeline Diagram](https://github.com/user-attachments/assets/6ce7f4e5-c445-44a5-8338-3553f1984cd7)  
+- [CI/CD Pipeline Diagram](<img width="1006" height="330" alt="Screenshot 2025-07-10 010817" src="https://github.com/user-attachments/assets/a8fde525-e981-43c0-bc8a-7c96de0cb234" />)
+  
 - [Package Flow](https://github.com/user-attachments/assets/01685593-2411-4e2f-8b3c-ff389516b222) 
 - [Web App](https://github.com/user-attachments/assets/3a1ad1b3-1721-40de-80b8-f1a8630fe6d2)
 - [Pipeline Deployement](https://github.com/user-attachments/assets/d133117e-060e-458d-b345-f6759a2e82c0)
@@ -51,8 +52,6 @@ This project implements a **fully automated CI/CD pipeline** using AWS services 
 ## 📝 **LinkedIn Project Log**  
 Follow my daily progress and lessons learned:  
 🔗 [LinkedIn Post](www.linkedin.com/in/vedika-gangil-2b793a251)  
-
----
 
 ## ✨ Author  
 [Vedika Gangil]  
