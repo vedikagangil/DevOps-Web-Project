@@ -41,12 +41,22 @@ This project implements a **fully automated CI/CD pipeline** using AWS services 
 ✅ **Security** – IAM roles limit permissions; GitHub tokens replace passwords.  
 ✅ **Scalability** – Ready for multi-instance deployments (adjust `deployment-config` in CodeDeploy).  
 
-## 📸 **Screenshots & Demo**  
-- [CI/CD Pipeline Diagram](screenshots/ci-cd-pipeline/1-Pipeline-Diagram.png)
-- [Package Flow](screenshots/ci-cd-pipeline/2-Package-Flow.png) 
-- [Web App](screenshots/ci-cd-pipeline/3-Web-App.png)
-- [Pipeline Deployement](screenshots/ci-cd-pipeline/4-Pipeline-Deployment.png)
-- [Web App](screenshots/ci-cd-pipeline/5-Web-App.png)
+## 📸 Screenshots & Demo  
+
+### CI/CD Pipeline Diagram
+![Pipeline Diagram](screenshots/ci-cd-pipeline/1-Pipeline-Diagram.png)
+
+### Package Flow
+![Package Flow](screenshots/ci-cd-pipeline/2-Package-Flow.png)
+
+### Web Application
+![Web App](screenshots/ci-cd-pipeline/3-Web-App.png)
+
+### Pipeline Deployment
+![Deployment](screenshots/ci-cd-pipeline/4-Pipeline-Deployement.png)
+
+### Deployed Application
+![Live App](screenshots/ci-cd-pipeline/5-Web-App.png)
 
 ## 📝 **LinkedIn Project Log**  
 Follow my daily progress and lessons learned:  
