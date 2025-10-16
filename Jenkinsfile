@@ -5,7 +5,14 @@ pipeline {
         // Application server details - UPDATE THESE FOR YOUR SETUP
         APP_SERVER_IP = 'YOUR_APP_SERVER_IP'  // Your Linux app server IP
         APP_USER = 'ec2-user'                 // Your Linux app server username
-        DEPLOY_PATH = '/opt/your-app'
+        DEPLOY_PATH = '/home/ec2-user/app'
+        // Add Maven to PATH if needed
+        PATH = "/opt/maven/bin:${env.PATH}"
+    }
+    
+    tools {
+        // Configure Maven in Jenkins globally first
+        maven 'M3'
     }
     
     stages {
@@ -17,7 +24,9 @@ pipeline {
         
         stage('Build and Unit Test') {
             steps {
-                // Use bat for Windows commands
+                // Use sh for Linux commands if Jenkins is on Linux
+                // If Jenkins is on Windows, ensure Maven is installed and in PATH
+                bat 'mvn --version' // First check if Maven is available
                 bat 'mvn clean compile test'
             }
             post {
@@ -37,22 +46,24 @@ pipeline {
         stage('Deploy to Linux Server') {
             steps {
                 script {
-                    // Copy artifact to Linux application server
-                    bat """
-                        scp -o StrictHostKeyChecking=no -i "C:\\path\\to\\your\\key.pem" target/*.war ${env.APP_USER}@${env.APP_SERVER_IP}:${env.DEPLOY_PATH}/
-                    """
-                    
-                    // SSH to Linux server and deploy
-                    bat """
-                        ssh -o StrictHostKeyChecking=no -i "C:\\path\\to\\your\\key.pem" ${env.APP_USER}@${env.APP_SERVER_IP} "
-                            cd ${env.DEPLOY_PATH}
-                            # Stop existing app
-                            pkill -f 'java.*war' || true
-                            # Start new app
-                            nohup java -jar *.war > app.log 2>&1 &
-                            echo 'Deployment completed!'
-                        "
-                    """
+                    // For Windows Jenkins to Linux deployment
+                    withCredentials([sshUserPrivateKey(credentialsId: 'your-ssh-credential-id', keyFileVariable: 'SSH_KEY')]) {
+                        bat """
+                            scp -o StrictHostKeyChecking=no -i "%SSH_KEY%" target/*.war ${env.APP_USER}@${env.APP_SERVER_IP}:${env.DEPLOY_PATH}/
+                        """
+                        
+                        bat """
+                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" ${env.APP_USER}@${env.APP_SERVER_IP} "
+                                cd ${env.DEPLOY_PATH}
+                                # Stop existing app
+                                sudo pkill -f 'java.*war' || true
+                                sleep 5
+                                # Start new app
+                                nohup java -jar *.war > app.log 2>&1 &
+                                echo 'Deployment completed!'
+                            "
+                        """
+                    }
                 }
             }
         }
