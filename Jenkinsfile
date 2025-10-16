@@ -1,90 +1,69 @@
 pipeline {
-    agent any // This tells Jenkins to allocate an executor on any available agent (node)
-
+    agent any
+    
     environment {
-        // Define environment variables for your S3 bucket and application name
-        S3_BUCKET = 'your-build-artifacts-bucket-name'
-        APPLICATION_NAME = 'YourCodeDeployApplicationName'
-        DEPLOYMENT_GROUP = 'YourCodeDeployDeploymentGroupName'
+        // Application server details - UPDATE THESE FOR YOUR SETUP
+        APP_SERVER_IP = 'YOUR_APP_SERVER_IP'  // Your Linux app server IP
+        APP_USER = 'ec2-user'                 // Your Linux app server username
+        DEPLOY_PATH = '/opt/your-app'
     }
-
+    
     stages {
         stage('Checkout') {
             steps {
-                // This replaces the GitHub source connection in CodePipeline
-                git branch: 'master',
-                    url: 'https://github.com/vedikagangil/DevOps-Web-Project.git'
+                checkout scm
             }
         }
-
+        
         stage('Build and Unit Test') {
             steps {
-                // This replaces the CodeBuild project
-                sh 'mvn -f path/to/your/pom.xml clean compile test'
+                // Use bat for Windows commands
+                bat 'mvn clean compile test'
             }
             post {
                 always {
-                    // Always publish JUnit test results, even if the stage fails
                     junit '**/target/surefire-reports/*.xml'
                 }
             }
         }
-
+        
         stage('Package') {
             steps {
-                sh 'mvn -f path/to/your/pom.xml package -DskipTests'
-                // The packaged WAR/JAR file is now in the target/ directory
+                bat 'mvn package -DskipTests'
+                archiveArtifacts 'target/*.war'
             }
         }
-
-        stage('Upload to S3') {
+        
+        stage('Deploy to Linux Server') {
             steps {
-                // This uses the AWS CLI (pre-installed on the Jenkins instance) to push the artifact
-                // The AWS Steps plugin provides a more native 's3Upload' step as an alternative.
-                sh """
-                    aws s3 cp path/to/your/target/your-app.war \
-                    s3://${env.S3_BUCKET}/build-artifacts/your-app-${env.BUILD_NUMBER}.war
-                """
-            }
-        }
-
-        stage('Deploy with CodeDeploy') {
-            steps {
-                // This replaces the CodeDeploy stage in CodePipeline.
-                // It triggers an external CodeDeploy deployment.
                 script {
-                    def deploymentId = sh(
-                        script: """
-                            aws deploy create-deployment \
-                                --application-name ${env.APPLICATION_NAME} \
-                                --deployment-group-name ${env.DEPLOYMENT_GROUP} \
-                                --s3-location bucket=${env.S3_BUCKET},key=build-artifacts/your-app-${env.BUILD_NUMBER}.war,bundleType=zip \
-                                --query 'deploymentId' --output text
-                        """,
-                        returnStdout: true
-                    ).trim()
-
-                    echo "Deployment triggered: $deploymentId"
-
-                    // Optional: Wait for deployment to complete
-                    sh """
-                        aws deploy wait deployment-successful --deployment-id $deploymentId
+                    // Copy artifact to Linux application server
+                    bat """
+                        scp -o StrictHostKeyChecking=no -i "C:\\path\\to\\your\\key.pem" target/*.war ${env.APP_USER}@${env.APP_SERVER_IP}:${env.DEPLOY_PATH}/
+                    """
+                    
+                    // SSH to Linux server and deploy
+                    bat """
+                        ssh -o StrictHostKeyChecking=no -i "C:\\path\\to\\your\\key.pem" ${env.APP_USER}@${env.APP_SERVER_IP} "
+                            cd ${env.DEPLOY_PATH}
+                            # Stop existing app
+                            pkill -f 'java.*war' || true
+                            # Start new app
+                            nohup java -jar *.war > app.log 2>&1 &
+                            echo 'Deployment completed!'
+                        "
                     """
                 }
             }
         }
     }
-
+    
     post {
         always {
-            // Clean up workspace after build, or send notifications
             cleanWs()
         }
         failure {
-            // Send an email or Slack notification on failure
-            mail to: 'team@example.com',
-                 subject: "Failed Pipeline: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
-                 body: "Check the build at: ${env.BUILD_URL}"
+            echo 'Pipeline failed! Check the console output for details.'
         }
     }
 }
