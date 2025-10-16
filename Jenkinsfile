@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     environment {
-        DEPLOY_PATH = '/home/ec2-user/app'
+        DEPLOY_PATH = 'C:\\jenkins\\app'
     }
     
     stages {
@@ -14,14 +14,14 @@ pipeline {
         
         stage('Build') {
             steps {
-                sh 'mvn --version'
-                sh 'mvn clean compile'
+                bat 'mvn --version'
+                bat 'mvn clean compile'
             }
         }
         
         stage('Test') {
             steps {
-                sh 'mvn test'
+                bat 'mvn test'
             }
             post {
                 always {
@@ -32,7 +32,7 @@ pipeline {
         
         stage('Package') {
             steps {
-                sh 'mvn package -DskipTests'
+                bat 'mvn package -DskipTests'
                 archiveArtifacts 'target/*.war'
             }
         }
@@ -40,30 +40,29 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    sh """
+                    bat """
                         echo "=== Starting Deployment ==="
                         
                         # Create deployment directory
-                        echo "Creating deployment directory at ${env.DEPLOY_PATH}"
-                        sudo mkdir -p ${env.DEPLOY_PATH}
-                        sudo chown \$USER:\$USER ${env.DEPLOY_PATH}
+                        if not exist "${env.DEPLOY_PATH}" mkdir "${env.DEPLOY_PATH}"
                         
                         # Copy WAR file
                         echo "Copying WAR file to deployment directory"
-                        cp -v target/*.war ${env.DEPLOY_PATH}/
+                        copy target\\*.war "${env.DEPLOY_PATH}\\"
                         
                         # Stop any existing application
                         echo "Stopping any existing application..."
-                        sudo pkill -f 'java.*war' || echo "No existing application running"
-                        sleep 5
+                        taskkill /F /IM java.exe 2>nul || echo "No existing Java application running"
+                        timeout /t 5
                         
                         # Deploy new application
                         echo "Starting new application..."
-                        cd ${env.DEPLOY_PATH}
-                        nohup java -jar *.war > app.log 2>&1 &
-                        echo \$! > app.pid
+                        cd /d "${env.DEPLOY_PATH}"
+                        for %%f in (*.war) do (
+                            start /B java -jar "%%f" > app.log 2>&1
+                            echo !time! - Application started: %%f >> deployment.log
+                        )
                         
-                        echo "Application started with PID: \$(cat app.pid)"
                         echo "Deployment completed successfully!"
                     """
                 }
@@ -73,34 +72,31 @@ pipeline {
         stage('Verify') {
             steps {
                 script {
-                    sh """
+                    bat """
                         echo "=== Verifying Deployment ==="
                         
                         # Wait for app to start
-                        sleep 10
+                        timeout /t 10
                         
-                        # Check if process is running
-                        echo "Checking application process..."
-                        if ps -p \$(cat ${env.DEPLOY_PATH}/app.pid) > /dev/null 2>&1; then
-                            echo "✓ Application is running with PID: \$(cat ${env.DEPLOY_PATH}/app.pid)"
-                        else
-                            echo "✗ Application process not found"
-                            echo "Application log:"
-                            cat ${env.DEPLOY_PATH}/app.log
-                            exit 1
-                        fi
+                        # Check if Java process is running
+                        echo "Checking Java processes..."
+                        tasklist /FI "IMAGENAME eq java.exe" /FO CSV
                         
                         # Check listening ports
                         echo "Checking listening ports..."
-                        netstat -tlnp | grep :8080 || echo "Port 8080 not in use (this might be normal)"
+                        netstat -an | findstr ":8080" || echo "Port 8080 not in use"
                         
                         # Try to access the application
                         echo "Testing application endpoint..."
-                        curl -f http://localhost:8080/ && echo "✓ Application is accessible" || echo "⚠ Application not accessible on port 8080 (might be using different port)"
+                        curl -f http://localhost:8080/ && echo "Application is accessible" || echo "Application not accessible on port 8080"
                         
-                        # Show application log
-                        echo "Application log (last 10 lines):"
-                        tail -10 ${env.DEPLOY_PATH}/app.log
+                        # Show application log if exists
+                        if exist "${env.DEPLOY_PATH}\\app.log" (
+                            echo "Application log (last 10 lines):"
+                            tail -10 "${env.DEPLOY_PATH}\\app.log"
+                        ) else (
+                            echo "No application log file found"
+                        )
                     """
                 }
             }
@@ -113,15 +109,10 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "🎉 Pipeline completed successfully!"
-            sh """
-                echo "Application deployed to: ${env.DEPLOY_PATH}"
-                echo "Log file: ${env.DEPLOY_PATH}/app.log"
-                echo "PID file: ${env.DEPLOY_PATH}/app.pid"
-            """
+            echo "Pipeline completed successfully!"
         }
         failure {
-            echo "❌ Pipeline failed. Check the logs above for details."
+            echo "Pipeline failed. Check the logs above for details."
         }
     }
 }
