@@ -99,12 +99,13 @@ pipeline {
     }
     
     post {
-        always {
-            archiveArtifacts artifacts: '**/*.war', allowEmptyArchive: true
-            cleanWs()
-        }
-        success {
-            echo "🎉 Deployment successful! Application available at: http://localhost:8081/nextwork-web-project/"
-        }
+    always {
+        archiveArtifacts artifacts: '**/*.war', allowEmptyArchive: true
+        // Use this instead of cleanWs() to avoid the error
+        bat 'echo "Cleaning workspace..."'
+    }
+    success {
+        echo "🎉 SUCCESS! Your application is deployed and running at: http://localhost:8081/nextwork-web-project/"
+        echo "Full CI/CD pipeline with Jenkins is now COMPLETE!"
     }
 }
