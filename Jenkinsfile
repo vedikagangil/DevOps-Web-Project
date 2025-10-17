@@ -2,8 +2,8 @@ pipeline {
     agent any
     
     tools {
-        jdk 'java17'  // This should now point to C:\Program Files\Java\jdk-17
-        maven 'M3'
+        jdk 'java17'  // Uses Java 17 from Jenkins configuration
+        maven 'M3'    // Uses Maven from Jenkins configuration
     }
     
     environment {
@@ -11,21 +11,19 @@ pipeline {
     }
     
     stages {
-        stage('Verify Java Configuration') {
+        stage('Verify Clean Java 17 Setup') {
             steps {
                 bat '''
-                    echo "=== Java Configuration Check ==="
+                    echo "=== Java 17 Verification ==="
                     echo "JAVA_HOME: %JAVA_HOME%"
-                    echo "MAVEN_HOME: %MAVEN_HOME%"
-                    echo "--- Checking Java Installation ---"
-                    dir "%JAVA_HOME%" /AD && echo "✓ JAVA_HOME directory exists" || echo "✗ JAVA_HOME directory missing"
-                    if exist "%JAVA_HOME%\\bin\\java.exe" (
-                        echo "✓ java.exe found in JAVA_HOME\\bin"
-                        "%JAVA_HOME%\\bin\\java.exe" -version
-                    ) else (
-                        echo "✗ java.exe NOT found in JAVA_HOME\\bin"
-                    )
-                    echo "--- Maven Check ---"
+                    echo "--- Java Version ---"
+                    java -version
+                    echo "--- Javac Version ---"
+                    javac -version
+                    echo "--- All Java Executables ---"
+                    where java
+                    where javac
+                    echo "--- Maven with Java 17 ---"
                     mvn --version
                 '''
             }
@@ -67,12 +65,12 @@ pipeline {
                     bat """
                         echo "=== Starting Deployment ==="
                         if not exist "${env.DEPLOY_PATH}" mkdir "${env.DEPLOY_PATH}"
-                        echo "Copying WAR files..."
+                        echo "Copying WAR file to ${env.DEPLOY_PATH}..."
                         copy target\\*.war "${env.DEPLOY_PATH}\\"
-                        echo "Stopping existing applications..."
-                        taskkill /F /IM java.exe 2>nul || echo "No existing Java applications found"
+                        echo "Stopping any existing applications..."
+                        taskkill /F /IM java.exe 2>nul || echo "No running applications found"
                         timeout /t 5
-                        echo "Starting new application..."
+                        echo "Starting application with Java 17..."
                         cd /d "${env.DEPLOY_PATH}"
                         for %%f in (*.war) do (
                             echo "Deploying: %%f"
@@ -90,15 +88,18 @@ pipeline {
                     bat """
                         echo "=== Verifying Deployment ==="
                         timeout /t 10
-                        echo "Checking Java processes..."
+                        echo "1. Checking Java processes..."
                         tasklist /FI "IMAGENAME eq java.exe" | find "java.exe" && echo "✓ Java process is running" || echo "✗ No Java process found"
-                        echo "Checking port 8080..."
+                        echo "2. Checking port 8080..."
                         netstat -an | find ":8080" && echo "✓ Port 8080 is in use" || echo "✗ Port 8080 not in use"
-                        echo "Testing application..."
+                        echo "3. Testing application endpoint..."
                         curl -f http://localhost:8080/ && echo "✓ Application is responding!" || echo "⚠ Application not responding on port 8080"
+                        echo "4. Application log:"
                         if exist "${env.DEPLOY_PATH}\\app.log" (
-                            echo "Application log (last 5 lines):"
-                            tail -5 "${env.DEPLOY_PATH}\\app.log"
+                            echo "Last 10 lines of app.log:"
+                            tail -10 "${env.DEPLOY_PATH}\\app.log"
+                        ) else (
+                            echo "No app.log file found"
                         )
                     """
                 }
@@ -111,10 +112,15 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "🎉 Pipeline completed successfully!"
+            echo "🎉 Pipeline completed successfully with Java 17!"
+            emailext (
+                subject: "SUCCESS: Jenkins Pipeline Completed",
+                body: "The Jenkins pipeline has completed successfully using Java 17.",
+                to: "YOUR_EMAIL@example.com"
+            )
         }
         failure {
-            echo "❌ Pipeline failed. Check the logs above."
+            echo "❌ Pipeline failed. Check the logs above for details."
         }
     }
 }
